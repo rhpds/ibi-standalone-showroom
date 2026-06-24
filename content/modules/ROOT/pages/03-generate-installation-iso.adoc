@@ -1,0 +1,60 @@
+= Generate the Installation ISO
+
+The installation ISO contains the RHCOS live environment and the `lca-cli` binary. When the server boots from this ISO, it will restore the seed image to disk.
+
+== Create the Installation Directory
+
+[source,bash,role=execute]
+----
+mkdir -p ~/ibi-install
+cp ~/ibi-lab/image-based-installation-config.yaml ~/ibi-install/
+----
+
+== Generate the ISO
+
+[source,bash,role=execute]
+----
+openshift-install image-based create image \
+  --dir ~/ibi-install \
+  --log-level info
+----
+
+This command:
+
+1. Pulls the seed image metadata to determine the RHCOS version
+2. Downloads the matching RHCOS live ISO
+3. Embeds the installation configuration (seed image reference, disk, network)
+4. Produces `~/ibi-install/rhcos-ibi.iso`
+
+The process takes about 1-2 minutes.
+
+== Verify the ISO
+
+[source,bash,role=execute]
+----
+ls -lh ~/ibi-install/rhcos-ibi.iso
+----
+
+The ISO should be approximately 1-2 GB.
+
+== Serve the ISO via HTTP
+
+The Redfish BMC needs to download the ISO from an HTTP URL. Start a simple HTTP server on the bastion:
+
+[source,bash,role=execute]
+----
+cd ~/ibi-install
+nohup python3 -m http.server 8080 > /tmp/ibi-http.log 2>&1 &
+echo "HTTP server started on port 8080 (PID: $!)"
+----
+
+Verify the ISO is accessible:
+
+[source,bash,role=execute]
+----
+curl -s -o /dev/null -w "%{http_code} %{size_download}" http://localhost:8080/rhcos-ibi.iso
+----
+
+You should see `200` followed by the file size.
+
+Click **Next** to boot the server from this ISO using Redfish.

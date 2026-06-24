@@ -1,0 +1,60 @@
+= Introduction to Image-Based Installation
+
+== What is IBI?
+
+Image-Based Installation (IBI) is an OpenShift deployment method that uses a pre-captured **seed image** — a container image containing a complete Single Node OpenShift cluster (OS, container images, and cluster state).
+
+Instead of installing from scratch (which takes 45+ minutes with the Agent-Based Installer), IBI:
+
+1. Writes the seed image to disk (~8 minutes)
+2. Applies site-specific configuration (hostname, network, certificates) (~5 minutes)
+3. Starts the cluster (~5 minutes)
+
+Total: **~15-20 minutes** for a fully operational SNO cluster.
+
+== How It Works
+
+The IBI flow uses two ISOs and the Redfish BMC API:
+
+image::ibi-flow.png[IBI Flow,width=800]
+
+=== Phase 1: Seed Restore
+* The **installation ISO** boots the target server
+* `lca-cli` (Lifecycle Agent CLI) extracts and restores the seed image to disk
+* The OS, container images, and cluster state are written to the boot disk
+
+=== Phase 2: Reconfiguration
+* The **configuration ISO** contains site-specific details (hostname, IP, cluster name, certificates)
+* After reboot, `lca-cli` detects the config ISO and runs `recert` to regenerate all cluster certificates
+* CRI-O and kubelet start with the new identity
+
+=== Key Components
+
+[cols="1,3"]
+|===
+|Component |Description
+
+|`openshift-install`
+|Generates both the installation ISO and the configuration ISO
+
+|`lca-cli`
+|Lifecycle Agent CLI — embedded in the seed image, handles restore and reconfiguration
+
+|`recert`
+|Certificate regeneration tool — transforms the seed's dummy certs into unique ones
+
+|Seed Image
+|OCI container image containing a captured SNO (OS + containers + cluster state)
+
+|Redfish BMC
+|Industry-standard server management API — used to mount ISOs and control power
+|===
+
+== Why IBI?
+
+* **Speed** — 15 minutes vs 45+ minutes for agent-based install
+* **Consistency** — Every deployment starts from the same validated image
+* **Scale** — One seed image deploys hundreds of identical edge clusters
+* **Datacenter workflow** — Uses standard Redfish BMC, just like real hardware
+
+Click **Next** to explore your lab environment.

@@ -1,0 +1,69 @@
+= Boot from ISO via Redfish
+
+Now you'll use the Redfish BMC API to mount the installation ISO as virtual media and boot the server — exactly how a datacenter technician would deploy a server remotely.
+
+== Load BMC Variables
+
+[source,bash,role=execute]
+----
+BMC_IP=$(grep 'bmc_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_USER=$(grep 'bmc_user' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_PASS=$(grep 'bmc_pass' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BASTION_IP=$(hostname -I | awk '{print $1}')
+SYSTEM_ID=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['Members'][0]['@odata.id'].split('/')[-1])")
+
+echo "BMC: http://${BMC_IP}:8000"
+echo "System: ${SYSTEM_ID}"
+echo "ISO URL: http://${BASTION_IP}:8080/rhcos-ibi.iso"
+----
+
+== Insert Virtual Media
+
+Mount the installation ISO as a virtual CD-ROM:
+
+[source,bash,role=execute]
+----
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"Image\": \"http://${BASTION_IP}:8080/rhcos-ibi.iso\",
+    \"Inserted\": true,
+    \"WriteProtected\": true
+  }" \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia
+
+echo "Virtual media inserted"
+----
+
+== Power On the Server
+
+[source,bash,role=execute]
+----
+# Check current power state
+POWER_STATE=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID} \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['PowerState'])")
+echo "Current power state: ${POWER_STATE}"
+
+# Power on (ForceOn if off, ForceRestart if already on)
+if [ "$POWER_STATE" = "Off" ]; then
+  RESET_TYPE="ForceOn"
+else
+  RESET_TYPE="ForceRestart"
+fi
+
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"ResetType\": \"${RESET_TYPE}\"}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/Actions/ComputerSystem.Reset
+
+echo "Server ${RESET_TYPE} initiated"
+----
+
+The server will now boot from the installation ISO. The UEFI firmware tries to boot from the hard disk first (which is blank), then falls through to the CD-ROM.
+
+Click **Next** to monitor the seed restore process.

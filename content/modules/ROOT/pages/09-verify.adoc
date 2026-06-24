@@ -1,0 +1,103 @@
+= Verify the Cluster
+
+Your SNO cluster should now be fully operational. Let's verify everything is working.
+
+== Cluster Version
+
+[source,bash,role=execute]
+----
+oc get clusterversion
+----
+
+Expected: `VERSION 4.22.0`, `AVAILABLE True`, `PROGRESSING False`.
+
+== Node Status
+
+[source,bash,role=execute]
+----
+oc get nodes
+----
+
+Expected: One node (`cp-0`) with `STATUS Ready` and roles `control-plane,master,worker`.
+
+== Cluster Operators
+
+[source,bash,role=execute]
+----
+oc get co
+----
+
+All operators should show `AVAILABLE True`, `PROGRESSING False`, `DEGRADED False`.
+
+== Quick Health Check
+
+[source,bash,role=execute]
+----
+# Count operators by status
+echo "Total operators: $(oc get co --no-headers | wc -l)"
+echo "Available:       $(oc get co --no-headers | awk '$3=="True" {n++} END {print n}')"
+echo "Degraded:        $(oc get co --no-headers | awk '$5=="True" {n++} END {print n}')"
+----
+
+== Console Access
+
+The OpenShift web console is available at:
+
+[source,bash,role=execute]
+----
+oc whoami --show-console
+----
+
+Login credentials:
+
+[source,bash,role=execute]
+----
+echo "Username: kubeadmin"
+echo "Password: $(cat ~/ibi-config/auth/kubeadmin-password)"
+----
+
+== Eject the Config ISO
+
+Now that the cluster is up, clean up by ejecting the config ISO:
+
+[source,bash,role=execute]
+----
+BMC_IP=$(grep 'bmc_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_USER=$(grep 'bmc_user' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_PASS=$(grep 'bmc_pass' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+SYSTEM_ID=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['Members'][0]['@odata.id'].split('/')[-1])")
+
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.EjectMedia
+
+echo "Config ISO ejected"
+----
+
+== Congratulations!
+
+You've successfully deployed a Single Node OpenShift cluster using Image-Based Installation with Redfish BMC — the same workflow used in production datacenter edge deployments.
+
+=== What You Accomplished
+
+* Generated installation and configuration ISOs with `openshift-install`
+* Managed server boot and virtual media via the Redfish API
+* Monitored the `lca-cli` seed restore and reconfiguration process
+* Verified a fully operational OCP 4.22 SNO cluster
+
+=== Key Takeaways
+
+* **IBI is fast** — ~20 minutes from blank server to running cluster
+* **Redfish is the standard** — the same API works on iDRAC, iLO, Supermicro, and virtual BMC
+* **Seed images are reusable** — one image deploys to hundreds of identical edge sites
+* **recert makes each cluster unique** — certificate regeneration ensures no two clusters share keys
+
+=== Next Steps
+
+* Explore the https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/edge_computing/image-based-installation-for-single-node-openshift[OpenShift IBI documentation]
+* Learn about https://github.com/openshift/lifecycle-agent[Lifecycle Agent] for image-based upgrades
+* Try scaling IBI with https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_management_for_kubernetes/[Red Hat Advanced Cluster Management]

@@ -1,0 +1,21 @@
+---
+site:
+  title: "Image-Based Installation for Single Node OpenShift"
+  url: https://github.com/rhpds/ibi-standalone-showroom
+  start_page: modules::index.adoc
+
+content:
+  sources:
+    - url: .
+      start_path: content
+
+ui:
+  bundle:
+    url: https://github.com/rhpds/rhdp_showroom_theme/releases/download/rh-one-2025/ui-bundle.zip
+    snapshot: true
+
+runtime:
+  cache_dir: ./.cache/antora
+
+output:
+  dir: ./www

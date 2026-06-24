@@ -1,0 +1,31 @@
+= Image-Based Installation for Single Node OpenShift
+
+Welcome to the Image-Based Installation (IBI) hands-on lab.
+
+In this lab you will deploy a Single Node OpenShift (SNO) cluster using the Image-Based Installation method — the same workflow used in datacenter edge deployments with Redfish BMC.
+
+== What You'll Learn
+
+* How IBI uses a pre-captured seed image to deploy OpenShift in ~15 minutes
+* How to generate installation and configuration ISOs with `openshift-install`
+* How to boot servers and manage virtual media using the Redfish API
+* How the Lifecycle Agent (`lca-cli`) restores and reconfigures the cluster
+* How certificate regeneration (`recert`) makes each deployment unique
+
+== Lab Environment
+
+Your environment includes:
+
+* **Bastion** — RHEL host with `openshift-install` and `oc` CLI pre-installed
+* **cp-0** — A blank UEFI virtual machine with BMC (Redfish) enabled
+* **Seed Image** — A pre-captured SNO image in a container registry
+
+The bastion has a BMC network connection to cp-0, allowing you to manage it via Redfish — just like a real datacenter server with iDRAC, iLO, or Supermicro BMC.
+
+== Time Required
+
+* Infrastructure setup: ~5 minutes (already done)
+* IBI deployment: ~20-25 minutes
+* Total lab time: ~30 minutes
+
+Click **Next** to begin.

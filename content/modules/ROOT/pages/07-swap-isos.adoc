@@ -1,0 +1,111 @@
+= Swap ISOs via Redfish
+
+The server currently has the installation ISO mounted. You need to:
+
+1. Eject the installation ISO
+2. Power off the server
+3. Insert the configuration ISO
+4. Power on — the server boots from disk (not the ISO), and `lca-cli` finds the config ISO
+
+== Load BMC Variables
+
+[source,bash,role=execute]
+----
+BMC_IP=$(grep 'bmc_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_USER=$(grep 'bmc_user' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_PASS=$(grep 'bmc_pass' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BASTION_IP=$(hostname -I | awk '{print $1}')
+SYSTEM_ID=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['Members'][0]['@odata.id'].split('/')[-1])")
+----
+
+== Step 1: Eject the Installation ISO
+
+[source,bash,role=execute]
+----
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.EjectMedia
+
+echo "Installation ISO ejected"
+----
+
+== Step 2: Power Off the Server
+
+[source,bash,role=execute]
+----
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"ResetType": "ForceOff"}' \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/Actions/ComputerSystem.Reset
+
+echo "ForceOff sent"
+----
+
+Wait for the server to power off:
+
+[source,bash,role=execute]
+----
+echo "Waiting for server to power off..."
+for i in $(seq 1 30); do
+  STATE=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+    http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID} \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['PowerState'])")
+  if [ "$STATE" = "Off" ]; then
+    echo "Server is Off"
+    break
+  fi
+  echo "  Power state: ${STATE} (attempt ${i}/30)"
+  sleep 5
+done
+----
+
+== Step 3: Insert the Configuration ISO
+
+[source,bash,role=execute]
+----
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"Image\": \"http://${BASTION_IP}:8080/imagebasedconfig.iso\",
+    \"Inserted\": true,
+    \"WriteProtected\": true
+  }" \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia
+
+echo "Configuration ISO inserted"
+----
+
+== Step 4: Power On
+
+[source,bash,role=execute]
+----
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"ResetType": "ForceOn"}' \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/Actions/ComputerSystem.Reset
+
+echo "Server powered on — booting from disk with config ISO attached"
+----
+
+== What Happens Next
+
+The server boots from the **hard disk** (the seed-restored RHCOS), not from the config ISO. The config ISO is attached as a CD-ROM device (`/dev/sr0`) with volume label `cluster-config`.
+
+The `lca-cli` post-pivot service:
+
+1. Detects the block device with label `cluster-config`
+2. Reads the site configuration (hostname, network, certificates)
+3. Runs `recert` to regenerate all cluster certificates
+4. Starts CRI-O and kubelet
+5. The API server comes online
+
+This process takes approximately **10-15 minutes**.
+
+Click **Next** to monitor the cluster coming up.

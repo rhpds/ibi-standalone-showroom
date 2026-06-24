@@ -1,0 +1,19 @@
+* xref:index.adoc[Home]
+
+* xref:01-introduction.adoc[1. Introduction to IBI]
+
+* xref:02-explore-environment.adoc[2. Explore the Environment]
+
+* xref:03-generate-installation-iso.adoc[3. Generate the Installation ISO]
+
+* xref:04-boot-from-iso.adoc[4. Boot from ISO via Redfish]
+
+* xref:05-monitor-seed-restore.adoc[5. Monitor Seed Restore]
+
+* xref:06-generate-config-iso.adoc[6. Generate the Config ISO]
+
+* xref:07-swap-isos.adoc[7. Swap ISOs via Redfish]
+
+* xref:08-wait-for-cluster.adoc[8. Wait for the Cluster]
+
+* xref:09-verify.adoc[9. Verify the Cluster]

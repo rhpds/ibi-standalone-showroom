@@ -1,0 +1,62 @@
+= Wait for the Cluster
+
+The server is now booting from the seed-restored RHCOS with the configuration ISO attached. The `lca-cli` post-pivot service will reconfigure the cluster and start all services.
+
+== Monitor Cluster Availability
+
+Poll the cluster version until it reports `Available=True`:
+
+[source,bash,role=execute]
+----
+echo "Waiting for OCP cluster to come up (this takes 10-15 minutes)..."
+
+for i in $(seq 1 60); do
+  STATUS=$(oc --kubeconfig=/home/${USER}/ibi-config/auth/kubeconfig \
+    get clusterversion version \
+    -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null)
+
+  if [ "$STATUS" = "True" ]; then
+    echo ""
+    echo "=== Cluster is AVAILABLE! ==="
+    oc --kubeconfig=/home/${USER}/ibi-config/auth/kubeconfig get clusterversion
+    break
+  fi
+
+  VERSION=$(oc --kubeconfig=/home/${USER}/ibi-config/auth/kubeconfig \
+    get clusterversion version \
+    -o jsonpath='{.status.desired.version}' 2>/dev/null)
+
+  if [ -n "$VERSION" ]; then
+    echo "  API reachable — OCP ${VERSION}, Available=${STATUS:-pending} (attempt ${i}/60)"
+  else
+    echo "  API not reachable yet (attempt ${i}/60)"
+  fi
+  sleep 30
+done
+----
+
+== What's Happening
+
+While you wait, here's what `lca-cli` is doing inside the server:
+
+1. **Detect config ISO** — scans block devices for label `cluster-config`
+2. **Set SSH keys** — writes authorized keys for early access
+3. **Node IP configuration** — configures the node's IP address for kubelet and CRI-O
+4. **Certificate regeneration** — `recert` scans all certificates and regenerates them with the new cluster identity (this is the longest step)
+5. **Start services** — enables and starts CRI-O and kubelet
+6. **Operator reconciliation** — cluster operators detect the new certificates and reconcile
+
+The `recert` step is the most time-consuming — it generates ~130 RSA keys and replaces 146+ certificates across etcd, the API server, and all operators.
+
+== Set Up Kubeconfig
+
+Once the cluster is available, copy the kubeconfig for easier access:
+
+[source,bash,role=execute]
+----
+mkdir -p ~/.kube
+cp ~/ibi-config/auth/kubeconfig ~/.kube/config
+echo "Kubeconfig copied to ~/.kube/config"
+----
+
+Click **Next** to verify the cluster.

@@ -1,0 +1,68 @@
+= Generate the Configuration ISO
+
+Now that the seed is restored to disk, you need to create the configuration ISO. This ISO contains the site-specific details that transform the generic seed into a unique cluster.
+
+== Create the Config Directory
+
+[source,bash,role=execute]
+----
+mkdir -p ~/ibi-config
+cp ~/ibi-lab/install-config.yaml ~/ibi-config/
+cp ~/ibi-lab/image-based-config.yaml ~/ibi-config/
+----
+
+== Generate the Config ISO
+
+[source,bash,role=execute]
+----
+openshift-install image-based create config-image \
+  --dir ~/ibi-config \
+  --log-level info
+----
+
+This command:
+
+1. Reads `install-config.yaml` (cluster identity, pull secret, SSH key)
+2. Reads `image-based-config.yaml` (hostname, NTP, network)
+3. Generates new cluster certificates and kubeconfig
+4. Creates `imagebasedconfig.iso` with volume label `cluster-config`
+
+== Verify the Config ISO
+
+[source,bash,role=execute]
+----
+ls -lh ~/ibi-config/imagebasedconfig.iso
+----
+
+The config ISO is small (~64 KB) — it only contains configuration, not OS images.
+
+Check the volume label:
+
+[source,bash,role=execute]
+----
+file ~/ibi-config/imagebasedconfig.iso
+----
+
+== Copy to HTTP Server Directory
+
+The config ISO needs to be served via HTTP for the Redfish BMC:
+
+[source,bash,role=execute]
+----
+cp ~/ibi-config/imagebasedconfig.iso ~/ibi-install/imagebasedconfig.iso
+echo "Config ISO copied to HTTP server directory"
+----
+
+== Check the Generated Kubeconfig
+
+The config-image command also generated authentication files:
+
+[source,bash,role=execute]
+----
+ls ~/ibi-config/auth/
+cat ~/ibi-config/auth/kubeadmin-password
+----
+
+Save this — you'll use the kubeconfig to access the cluster once it's up.
+
+Click **Next** to swap the ISOs via Redfish.

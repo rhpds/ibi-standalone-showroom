@@ -1,0 +1,9 @@
+name: modules
+title: "Image-Based Installation for Single Node OpenShift"
+version: master
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    page-pagination: true

@@ -1,0 +1,74 @@
+= Monitor Seed Restore
+
+The server is now booting from the installation ISO. The `lca-cli ibi` command will:
+
+1. Clean the installation disk
+2. Run `coreos-installer` to write RHCOS to disk
+3. Pull the seed image from the registry
+4. Restore the ostree deployment and container images
+5. Create the `/var/lib/containers` partition
+
+This process takes approximately **8-10 minutes**.
+
+== Wait for SSH Access
+
+The live ISO environment enables SSH access with the provision key. Wait for the server to become reachable:
+
+[source,bash,role=execute]
+----
+echo "Waiting for cp-0 to become reachable via SSH..."
+TARGET_IP=$(grep 'target_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+
+for i in $(seq 1 60); do
+  if ssh -i ~/.ssh/ibi_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+     -o ConnectTimeout=3 core@${TARGET_IP} "echo SSH_OK" 2>/dev/null; then
+    echo "SSH connection established!"
+    break
+  fi
+  echo "Attempt ${i}/60 — waiting..."
+  sleep 10
+done
+----
+
+== Monitor the Restore Progress
+
+Once SSH is available, watch the seed restore service:
+
+[source,bash,role=execute]
+----
+TARGET_IP=$(grep 'target_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+
+ssh -i ~/.ssh/ibi_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  core@${TARGET_IP} \
+  "journalctl -u install-rhcos-and-restore-seed -f" 2>/dev/null
+----
+
+[NOTE]
+====
+Press `Ctrl+C` to stop following the log once you see **"IBI preparation process finished"** or **"finished successfully"**.
+====
+
+You can also check the progress by polling:
+
+[source,bash,role=execute]
+----
+TARGET_IP=$(grep 'target_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+
+ssh -i ~/.ssh/ibi_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  core@${TARGET_IP} \
+  "journalctl -u install-rhcos-and-restore-seed --no-pager -q | tail -5" 2>/dev/null
+----
+
+== What's Happening Inside
+
+During the seed restore, `lca-cli` performs these steps:
+
+1. **Disk cleanup** — Wipes the installation disk partition table
+2. **RHCOS install** — `coreos-installer` writes the base OS to disk
+3. **Seed pull** — Downloads the seed OCI image (~1.5 GB)
+4. **ostree restore** — Deploys the captured ostree commit (kernel, OS, kubelet, etc.)
+5. **Image pre-cache** — Restores container images to `/var/lib/containers`
+
+Once complete, the server has a fully populated RHCOS installation with all OCP container images — but with the **seed cluster's identity** (wrong hostname, wrong certificates). The next phase will fix that.
+
+Click **Next** once seed restore is complete.

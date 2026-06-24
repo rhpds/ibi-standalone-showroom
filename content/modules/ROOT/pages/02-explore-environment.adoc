@@ -1,0 +1,105 @@
+= Explore the Environment
+
+Before starting the IBI deployment, let's explore what's available on the bastion and verify connectivity to the BMC.
+
+== Pre-Installed Tools
+
+Check that the required tools are available:
+
+[source,bash,role=execute]
+----
+openshift-install version
+oc version --client
+----
+
+== IBI Configuration Files
+
+The configuration files for IBI have been pre-staged in `~/ibi-lab/`. Let's examine each one.
+
+=== Installation Configuration
+
+This file tells `openshift-install` how to generate the installation ISO — which seed image to use, which disk to install to, and the network configuration:
+
+[source,bash,role=execute]
+----
+cat ~/ibi-lab/image-based-installation-config.yaml
+----
+
+Key fields:
+
+* `seedImage` — The OCI container image containing the captured SNO
+* `seedVersion` — Must match the OCP version in the seed
+* `installationDisk` — Target disk (`/dev/vda`)
+* `networkConfig` — NMState format network configuration for the target node
+
+=== Cluster Configuration
+
+This file defines the OpenShift cluster identity:
+
+[source,bash,role=execute]
+----
+cat ~/ibi-lab/install-config.yaml
+----
+
+Key fields:
+
+* `baseDomain` and `metadata.name` — Together form the cluster's DNS identity
+* `pullSecret` — Registry credentials for pulling OCP images
+* `sshKey` — SSH public key for `core` user access
+
+=== Site Configuration
+
+This file provides per-site details for the reconfiguration phase:
+
+[source,bash,role=execute]
+----
+cat ~/ibi-lab/image-based-config.yaml
+----
+
+Key fields:
+
+* `hostname` — The desired hostname for the SNO node
+* `releaseRegistry` — Where to pull OCP release images from
+* `additionalNTPSources` — NTP servers for time sync
+
+== BMC Connectivity
+
+The target server (cp-0) has a BMC endpoint accessible from the bastion. Let's verify Redfish connectivity:
+
+[source,bash,role=execute]
+----
+# Read BMC connection info
+cat ~/ibi-lab/bmc-info.txt
+----
+
+[source,bash,role=execute]
+----
+# Query the Redfish Systems endpoint
+BMC_IP=$(grep 'bmc_ip' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_USER=$(grep 'bmc_user' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+BMC_PASS=$(grep 'bmc_pass' ~/ibi-lab/bmc-info.txt | awk '{print $2}')
+
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems \
+  | python3 -m json.tool
+----
+
+You should see a `Members` array with one system. Note the system ID — you'll use it in subsequent Redfish commands.
+
+[source,bash,role=execute]
+----
+# Get the system ID and check power state
+SYSTEM_ID=$(curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['Members'][0]['@odata.id'].split('/')[-1])")
+
+echo "System ID: ${SYSTEM_ID}"
+
+curl -s -u "${BMC_USER}:${BMC_PASS}" \
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID} \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'Name: {d[\"Name\"]}'); print(f'PowerState: {d[\"PowerState\"]}')"
+----
+
+The server should be powered **Off** — it's waiting for you to boot it from the installation ISO.
+
+Click **Next** to generate the installation ISO.
