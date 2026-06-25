@@ -1,4 +1,9 @@
 ---
 type: showroom
-default_width: 30
+default_width: 40
 persist_url_state: true
+
+tabs:
+  - name: Terminal
+    path: /wetty
+    port: 443
