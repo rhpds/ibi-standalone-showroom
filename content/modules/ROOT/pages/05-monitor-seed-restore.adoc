@@ -49,7 +49,7 @@ ssh -i ~/.ssh/ibi_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/nul
 
 [NOTE]
 ====
-Press `Ctrl+C` to stop following the log once you see **"IBI preparation process finished"** or **"finished successfully"**.
+Press `Ctrl+C` to stop following the log once you see **"IBI preparation process finished successfully!"** followed by **"Finished SNO Image-based Installation."**
 ====
 
 You can also check the progress by polling:
