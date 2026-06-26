@@ -76,4 +76,6 @@ fi
 
 The server will now boot from the installation ISO. The UEFI firmware tries to boot from the hard disk first (which is blank), then falls through to the CD-ROM.
 
+TIP: Switch to the **Console (cp-0)** tab to watch the VM boot in real time.
+
 Click **Next** to monitor the seed restore process.

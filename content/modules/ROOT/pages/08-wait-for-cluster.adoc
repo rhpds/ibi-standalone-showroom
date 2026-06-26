@@ -4,6 +4,8 @@ The server is now booting from the seed-restored RHCOS with the configuration IS
 
 == Monitor Cluster Availability
 
+TIP: Switch back to the **Terminal** tab to run the commands below. You can toggle to **Console (cp-0)** anytime to watch the boot and reconfiguration progress.
+
 Poll the cluster version until it reports `Available=True`:
 
 [source,bash,role=execute]

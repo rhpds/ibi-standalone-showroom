@@ -10,7 +10,11 @@ The server is now booting from the installation ISO. The `lca-cli ibi` command w
 
 This process takes approximately **8-10 minutes**.
 
+TIP: Switch to the **Console (cp-0)** tab to watch the boot and restore process visually while you follow along here.
+
 == Wait for SSH Access
+
+NOTE: Switch back to the **Terminal** tab to run the commands below.
 
 The live ISO environment enables SSH access with the provision key. Wait for the server to become reachable:
 

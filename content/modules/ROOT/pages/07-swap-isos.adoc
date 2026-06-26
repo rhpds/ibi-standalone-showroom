@@ -113,4 +113,6 @@ The `lca-cli` post-pivot service:
 
 This process takes approximately **10-15 minutes**.
 
+TIP: Check the **Console (cp-0)** tab — you can watch the server boot from disk and the reconfiguration process in real time.
+
 Click **Next** to monitor the cluster coming up.
