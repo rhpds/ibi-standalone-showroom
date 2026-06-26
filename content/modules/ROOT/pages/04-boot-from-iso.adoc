@@ -25,7 +25,7 @@ Mount the installation ISO as a virtual CD-ROM:
 
 [source,bash,role=execute]
 ----
-curl -s -u "${BMC_USER}:${BMC_PASS}" \
+RESULT=$(curl -s -w "\n%{http_code}" -u "${BMC_USER}:${BMC_PASS}" \
   -X POST \
   -H "Content-Type: application/json" \
   -d "{
@@ -33,9 +33,14 @@ curl -s -u "${BMC_USER}:${BMC_PASS}" \
     \"Inserted\": true,
     \"WriteProtected\": true
   }" \
-  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia
-
-echo "Virtual media inserted"
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia)
+HTTP_CODE=$(echo "$RESULT" | tail -1)
+if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+  echo "Virtual media inserted successfully"
+else
+  echo "ERROR: Failed to insert virtual media (HTTP $HTTP_CODE)"
+  echo "$RESULT" | head -1 | python3 -m json.tool 2>/dev/null || echo "$RESULT" | head -1
+fi
 ----
 
 == Power On the Server
@@ -55,13 +60,18 @@ else
   RESET_TYPE="ForceRestart"
 fi
 
-curl -s -u "${BMC_USER}:${BMC_PASS}" \
+RESULT=$(curl -s -w "\n%{http_code}" -u "${BMC_USER}:${BMC_PASS}" \
   -X POST \
   -H "Content-Type: application/json" \
   -d "{\"ResetType\": \"${RESET_TYPE}\"}" \
-  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/Actions/ComputerSystem.Reset
-
-echo "Server ${RESET_TYPE} initiated"
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/Actions/ComputerSystem.Reset)
+HTTP_CODE=$(echo "$RESULT" | tail -1)
+if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+  echo "Server ${RESET_TYPE} initiated successfully"
+else
+  echo "ERROR: Failed to ${RESET_TYPE} server (HTTP $HTTP_CODE)"
+  echo "$RESULT" | head -1 | python3 -m json.tool 2>/dev/null || echo "$RESULT" | head -1
+fi
 ----
 
 The server will now boot from the installation ISO. The UEFI firmware tries to boot from the hard disk first (which is blank), then falls through to the CD-ROM.

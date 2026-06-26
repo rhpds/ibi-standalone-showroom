@@ -68,7 +68,7 @@ done
 
 [source,bash,role=execute]
 ----
-curl -s -u "${BMC_USER}:${BMC_PASS}" \
+RESULT=$(curl -s -w "\n%{http_code}" -u "${BMC_USER}:${BMC_PASS}" \
   -X POST \
   -H "Content-Type: application/json" \
   -d "{
@@ -76,9 +76,14 @@ curl -s -u "${BMC_USER}:${BMC_PASS}" \
     \"Inserted\": true,
     \"WriteProtected\": true
   }" \
-  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia
-
-echo "Configuration ISO inserted"
+  http://${BMC_IP}:8000/redfish/v1/Systems/${SYSTEM_ID}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia)
+HTTP_CODE=$(echo "$RESULT" | tail -1)
+if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+  echo "Configuration ISO inserted successfully"
+else
+  echo "ERROR: Failed to insert configuration ISO (HTTP $HTTP_CODE)"
+  echo "$RESULT" | head -1 | python3 -m json.tool 2>/dev/null || echo "$RESULT" | head -1
+fi
 ----
 
 == Step 4: Power On
