@@ -7,3 +7,5 @@ tabs:
   - name: Terminal
     path: /wetty
     port: 443
+  - name: Console (cp-0)
+    url: ${console_url}
